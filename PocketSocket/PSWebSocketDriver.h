@@ -60,4 +60,6 @@
 
 - (NSUInteger)execute:(void *)bytes maxLength:(NSUInteger)maxLength;
 
+- (BOOL)shouldUseHTTPSProxy;
+- (NSDictionary *)httpsProxySettings;
 @end

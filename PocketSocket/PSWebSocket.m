@@ -163,11 +163,23 @@
 
         CFReadStreamRef readStream = nil;
         CFWriteStreamRef writeStream = nil;
-        CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
-                                           (__bridge CFStringRef)host,
-                                           port,
-                                           &readStream,
-                                           &writeStream);
+
+        if (self->_driver.shouldUseHTTPSProxy) {
+            NSDictionary *proxySettings = self->_driver.httpsProxySettings;
+            NSString *host = proxySettings[(NSString *)kCFStreamPropertyHTTPSProxyHost];
+            NSNumber *port = proxySettings[(NSString *)kCFStreamPropertyHTTPSProxyPort];
+            CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
+                                               (__bridge CFStringRef)host,
+                                               port.unsignedIntValue,
+                                               &readStream,
+                                               &writeStream);
+        } else {
+            CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
+                                               (__bridge CFStringRef)host,
+                                               port,
+                                               &readStream,
+                                               &writeStream);
+        }
 
         #if TARGET_OS_OSX
         CFDictionaryRef systemProxyConfig = CFNetworkCopySystemProxySettings();
