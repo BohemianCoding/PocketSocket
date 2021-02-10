@@ -211,7 +211,7 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
 #warning figure out if port is always required
     NSString *hostWithPort = [NSString stringWithFormat:@"%@:443", host];
     NSString *method = [NSString stringWithFormat:@"CONNECT %@", hostWithPort ];
-    NSString *connectPrefix = [NSString stringWithFormat:@"%@ HTTP/1.1\r\nHost: %@\r\n\r\n", method, hostWithPort];
+    NSString *connectPrefix = [NSString stringWithFormat:@"%@ HTTP/1.1\r\nHost: %@\r\nProxy-Connection: keep-alive\r\n\r\n", method, hostWithPort];
     NSData *connectData = [connectPrefix dataUsingEncoding:NSUTF8StringEncoding];
     [_delegate driver:self write:connectData];
     _state = PSWebSocketDriverStateHTTPSProxyResponse;
@@ -479,7 +479,7 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
             }
 
             _state = PSWebSocketDriverStateHandshakeRequest;
-            [self writeHandshakeRequest];
+            [self.delegate driverDidProxyConnect:self];
             return maxLength;
         }
         //

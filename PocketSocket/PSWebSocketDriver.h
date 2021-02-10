@@ -21,6 +21,7 @@
 
 @required
 
+- (void)driverDidProxyConnect:(PSWebSocketDriver *)driver;
 - (void)driverDidOpen:(PSWebSocketDriver *)driver;
 - (void)driver:(PSWebSocketDriver *)driver didReceiveMessage:(id)message;
 - (void)driver:(PSWebSocketDriver *)driver didReceivePing:(NSData *)ping;
@@ -52,6 +53,7 @@
 #pragma mark - Actions
 
 - (void)start;
+- (void)writeHandshakeRequest;
 - (void)sendText:(NSString *)text;
 - (void)sendBinary:(NSData *)binary;
 - (void)sendCloseCode:(NSInteger)code reason:(NSString *)reason;

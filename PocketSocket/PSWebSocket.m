@@ -561,6 +561,15 @@
 
 #pragma mark - PSWebSocketDriverDelegate
 
+/// Called when we detected the usage of a HTTPS proxy, and the initial CONNECT call
+/// has succeeded. We proceed by calling writeHandshakeRequest, which is the regular start method.
+- (void)driverDidProxyConnect:(PSWebSocketDriver *)driver {
+    [self pumpInput];
+    [self pumpOutput];
+    [self executeWork:^{
+        [self->_driver writeHandshakeRequest];
+    }];
+}
 - (void)driverDidOpen:(PSWebSocketDriver *)driver {
     if(_readyState != PSWebSocketReadyStateConnecting) {
         [NSException raise:@"Invalid State" format:@"Ready state must be connecting to become open"];
