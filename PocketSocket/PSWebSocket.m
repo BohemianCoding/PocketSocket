@@ -358,6 +358,10 @@
         ssl[(__bridge id)kCFStreamSSLLevel] = (__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL;
         ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation);
         ssl[(__bridge id)kCFStreamSSLIsServer] = @NO;
+        if (_driver.shouldUseHTTPSProxy) {
+            // needed to prevent SSL errors when using a HTTPS proxy.
+            ssl[(__bridge id)kCFStreamSSLPeerName] = self.request.URL.host;
+        }
 
         _negotiatedSSL = !customTrustEvaluation;
         [_inputStream setProperty:ssl forKey:(__bridge id)kCFStreamPropertySSLSettings];
