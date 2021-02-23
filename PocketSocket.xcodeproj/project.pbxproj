@@ -29,6 +29,7 @@
 		275D3AE41B02811E0013B9A9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E30D18B37DD500BAE47A /* Foundation.framework */; };
 		D8AF08FB25E4E5D800145384 /* PSProxySupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D8AF08F925E4E5D800145384 /* PSProxySupport.m */; };
 		D8AF096C25E4F7FA00145384 /* PSProxySupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D8AF08F825E4E5D800145384 /* PSProxySupport.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D8AF09DD25E5029400145384 /* PSProxySupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D8AF08F925E4E5D800145384 /* PSProxySupport.m */; };
 		EE2A05DB18B5BBEC0066EEA4 /* PSWebSocketServer.m in Sources */ = {isa = PBXBuildFile; fileRef = EE2A05DA18B5BBEC0066EEA4 /* PSWebSocketServer.m */; };
 		EE337EC318B4AE1F003F95B9 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E38418B385DE00BAE47A /* libz.dylib */; };
 		EE337EC418B4AE23003F95B9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E30D18B37DD500BAE47A /* Foundation.framework */; };
@@ -474,6 +475,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8AF09DD25E5029400145384 /* PSProxySupport.m in Sources */,
 				275D3ADB1B02811E0013B9A9 /* PSWebSocketBuffer.m in Sources */,
 				275D3ADC1B02811E0013B9A9 /* PSWebSocket.m in Sources */,
 				275D3ADD1B02811E0013B9A9 /* PSWebSocketUTF8Decoder.m in Sources */,
