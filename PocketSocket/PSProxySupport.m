@@ -34,10 +34,29 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
         }
 
         // next best outcome: use a SOCKS proxy
-        if ([proxyDict[(NSString *)kCFProxyTypeKey] isEqual:(NSString *)kCFProxyTypeSOCKS]) {
-            Boolean ok = CFReadStreamSetProperty(stream, kCFStreamPropertySOCKSProxy, (__bridge CFTypeRef _Null_unspecified)(proxyDict));
+        if ([proxyDict[(NSString *)kCFProxyTypeKey] isEqual:(NSString *)kCFProxyTypeSOCKS] && proxyDict[(NSString *)kCFProxyHostNameKey] != nil) {
+            // One would think the system would provide the correct keys, but no, we need to massage them.
+            NSMutableDictionary *socksDict = [NSMutableDictionary new];
+            // alias for kCFStreamPropertySOCKSProxyHost
+            socksDict[NSStreamSOCKSProxyHostKey] = proxyDict[(NSString *)kCFProxyHostNameKey];
+            id port = proxyDict[(NSString *)kCFProxyPortNumberKey];
+            if (port) {
+                // alias for kCFStreamPropertySOCKSProxyPort
+                socksDict[NSStreamSOCKSProxyPortKey] = port;
+            }
+            id username = proxyDict[(NSString *)kCFProxyUsernameKey];
+            if (username) {
+                // alias for kCFStreamPropertySOCKSUser
+                socksDict[(NSString *)NSStreamSOCKSProxyUserKey] = username;
+            }
+            id password = proxyDict[(NSString *)kCFProxyPasswordKey];
+            if (password) {
+                // alias for kCFStreamPropertySOCKSPassword
+                socksDict[(NSString *)NSStreamSOCKSProxyPasswordKey] = password;
+            }
+            Boolean ok = CFReadStreamSetProperty(stream, kCFStreamPropertySOCKSProxy, (__bridge CFTypeRef)([socksDict copy]));
             if (!ok) {
-                NSLog(@"failed to set proxy: %@", proxyDict);
+                NSLog(@"failed to set proxy: %@", socksDict);
             }
             return;
         }
@@ -174,3 +193,8 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error)
 + (void)applySuitableProxyForURL:(NSURL *)url toStream:(CFReadStreamRef)stream {}
 #endif
 
+//@implementation NSDictionary (PSProxySetting)
+//
+//- (NSDictionary *)translating
+//
+//@end
