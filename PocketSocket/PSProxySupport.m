@@ -44,6 +44,9 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
                 // alias for kCFStreamPropertySOCKSProxyPort
                 socksDict[NSStreamSOCKSProxyPortKey] = port;
             }
+
+            // I did not have much luck getting these included automatically from the system settings,
+            // but you never know, maybe it works in some situations.
             id username = proxyDict[(NSString *)kCFProxyUsernameKey];
             if (username) {
                 // alias for kCFStreamPropertySOCKSUser
@@ -62,12 +65,15 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
         }
 
         // last possibility: use a https proxy as a CONNECT proxy. This is an undocumented feature of CFNetwork.
-        if ([proxyDict[(NSString *)kCFProxyTypeKey] isEqual:(NSString *)kCFProxyTypeHTTPS]) {
-            NSDictionary *connectProxySettings = @{
-                @"kCFStreamPropertyCONNECTProxyHost": proxyDict[(NSString *)kCFProxyHostNameKey],
-                @"kCFStreamPropertyCONNECTProxyPort": proxyDict[(NSString *)kCFProxyPortNumberKey]
-            };
-            Boolean ok = CFReadStreamSetProperty(stream, CFSTR("kCFStreamPropertyCONNECTProxy"), (__bridge CFTypeRef _Null_unspecified)(connectProxySettings));
+        if ([proxyDict[(NSString *)kCFProxyTypeKey] isEqual:(NSString *)kCFProxyTypeHTTPS] && proxyDict[(NSString *)kCFProxyHostNameKey] != nil) {
+            NSMutableDictionary *connectDict = [NSMutableDictionary new];
+            connectDict[@"kCFStreamPropertyCONNECTProxyHost"] = proxyDict[(NSString *)kCFProxyHostNameKey];
+            id port = proxyDict[(NSString *)kCFProxyPortNumberKey];
+            if (port) {
+                connectDict[@"kCFStreamPropertyCONNECTProxyPort"] = port;
+            }
+            // there do not seem to be any authentication keys for CONNECT proxies.
+            Boolean ok = CFReadStreamSetProperty(stream, CFSTR("kCFStreamPropertyCONNECTProxy"), (__bridge CFTypeRef)([connectDict copy]));
             if (!ok) {
                 NSLog(@"failed to set proxy: %@", proxyDict);            }
             return;
