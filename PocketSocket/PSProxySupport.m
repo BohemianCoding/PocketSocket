@@ -13,6 +13,27 @@ typedef NS_ENUM(NSUInteger, PSProxyErrorCode) {
 
 static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
 
+/// "Inspired" by https://developer.apple.com/library/archive/samplecode/CFProxySupportTool/CFProxySupportTool.zip
+static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error)
+    // Callback for CFNetworkExecuteProxyAutoConfigurationURL.  client is a
+    // pointer to a CFTypeRef.  This stashes either error or proxies in that
+    // location.
+{
+    CFTypeRef *        resultPtr;
+
+    assert( (proxies != NULL) == (error == NULL) );
+
+    resultPtr = (CFTypeRef *) client;
+    assert( resultPtr != NULL);
+
+    if (error != NULL) {
+        *resultPtr = CFRetain(error);
+    } else {
+        *resultPtr = CFRetain(proxies);
+    }
+    CFRunLoopStop(CFRunLoopGetCurrent());
+}
+
 @implementation PSProxySupport
 
 #if TARGET_OS_OSX
@@ -173,35 +194,9 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
     }
 }
 
-@end
-
-/// "Inspired" by https://developer.apple.com/library/archive/samplecode/CFProxySupportTool/CFProxySupportTool.zip
-static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error)
-    // Callback for CFNetworkExecuteProxyAutoConfigurationURL.  client is a
-    // pointer to a CFTypeRef.  This stashes either error or proxies in that
-    // location.
-{
-    CFTypeRef *        resultPtr;
-
-    assert( (proxies != NULL) == (error == NULL) );
-
-    resultPtr = (CFTypeRef *) client;
-    assert( resultPtr != NULL);
-
-    if (error != NULL) {
-        *resultPtr = CFRetain(error);
-    } else {
-        *resultPtr = CFRetain(proxies);
-    }
-    CFRunLoopStop(CFRunLoopGetCurrent());
-}
 #else
 // For now, don't do anything with proxies on iOS.
 + (void)applySuitableProxyForURL:(NSURL *)url toStream:(CFReadStreamRef)stream {}
 #endif
+@end
 
-//@implementation NSDictionary (PSProxySetting)
-//
-//- (NSDictionary *)translating
-//
-//@end
