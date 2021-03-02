@@ -17,12 +17,12 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
 
 #if TARGET_OS_OSX
 
-+ (void)applySuitableProxyForURL:(NSURL *)url toStream:(CFReadStreamRef)stream {
++ (BOOL)applySuitableProxyForURL:(NSURL *)url toStream:(CFReadStreamRef)stream {
     NSError *error = nil;
     NSArray *proxies = [self getProxyListForURL:url error:&error];
     if (!proxies) {
         NSLog(@"failed to get suitable proxies for url: %@. Error: %@", url, error);
-        return;
+        return NO;
     }
 
     // Look for the first proxy we can work with (either "none", SOCKS, or HTTPS).
@@ -30,7 +30,7 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
 
         // most simple: don't use a proxy at all
         if ([proxyDict[(NSString *)kCFProxyTypeKey] isEqual:(NSString *)kCFProxyTypeNone]) {
-            return;
+            return NO;
         }
 
         // next best outcome: use a SOCKS proxy
@@ -61,7 +61,7 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
             if (!ok) {
                 NSLog(@"failed to set proxy: %@", socksDict);
             }
-            return;
+            return YES;
         }
 
         // last possibility: use a https proxy as a CONNECT proxy. This is an undocumented feature of CFNetwork.
@@ -76,11 +76,12 @@ static void ResultCallback(void * client, CFArrayRef proxies, CFErrorRef error);
             Boolean ok = CFReadStreamSetProperty(stream, CFSTR("kCFStreamPropertyCONNECTProxy"), (__bridge CFTypeRef)([connectDict copy]));
             if (!ok) {
                 NSLog(@"failed to set proxy: %@", proxyDict);            }
-            return;
+            return YES;
         }
 
         NSLog(@"ignoring proxy %@", proxyDict);
     }
+    return NO;
 }
 
 /// Gets the all proxies suitable for the given URL. It will resolve PAC proxies, so the result will not contain these.

@@ -326,8 +326,9 @@
 - (void)connect {
     if(_secure && _mode == PSWebSocketModeClient) {
 
+        BOOL usesProxy = NO;
 #if TARGET_OS_OSX
-        [PSProxySupport applySuitableProxyForURL:self.request.URL toStream:(CFReadStreamRef)self->_inputStream];
+        usesProxy = [PSProxySupport applySuitableProxyForURL:self.request.URL toStream:(CFReadStreamRef)self->_inputStream];
 #endif
         __block BOOL customTrustEvaluation = NO;
         [self executeDelegateAndWait:^{
@@ -336,7 +337,8 @@
 
         NSMutableDictionary *ssl = [NSMutableDictionary dictionary];
         ssl[(__bridge id)kCFStreamSSLLevel] = (__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL;
-        ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation);
+        // This `!usesProxy` condition is here to make it work for SOCKS. Most likely, there is a better solution for this.
+        ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation && !usesProxy);
         ssl[(__bridge id)kCFStreamSSLIsServer] = @NO;
 
         _negotiatedSSL = !customTrustEvaluation;
