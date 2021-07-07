@@ -47,6 +47,8 @@
 @end
 
 typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
+    PSWebSocketDriverStateConnectHTTPSProxy = -2,
+    PSWebSocketDriverStateHTTPSProxyResponse = -1,
     PSWebSocketDriverStateHandshakeRequest = 0,
     PSWebSocketDriverStateHandshakeResponse,
     PSWebSocketDriverStateFrameHeader,
@@ -112,8 +114,8 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
     NSParameterAssert(request);
     if((self = [super init])) {
         _mode = mode;
-        _state = (_mode == PSWebSocketModeClient) ? PSWebSocketDriverStateHandshakeRequest : PSWebSocketDriverStateHandshakeResponse;
         _request = [request mutableCopy];
+        _state = (_mode == PSWebSocketModeClient) ? (self.shouldUseHTTPSProxy ? PSWebSocketDriverStateConnectHTTPSProxy : PSWebSocketDriverStateHandshakeRequest) : PSWebSocketDriverStateHandshakeResponse;
         _frames = [NSMutableArray array];
         _utf8DecoderState = 0;
         _utf8DecoderCodePoint = 0;
@@ -202,8 +204,26 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
 
 #pragma mark - Writing
 
+- (void)writeHTTPSProxyRequest {
+    NSURL *URL = _request.URL;
+  //  BOOL secure = ([URL.scheme isEqualToString:@"https"] || [URL.scheme isEqualToString:@"wss"]);
+    NSString *host = (URL.port) ? [NSString stringWithFormat:@"%@:%@", URL.host, URL.port] : URL.host;
+#warning figure out if port is always required
+    NSString *hostWithPort = [NSString stringWithFormat:@"%@:443", host];
+    NSString *method = [NSString stringWithFormat:@"CONNECT %@", hostWithPort ];
+    NSString *connectPrefix = [NSString stringWithFormat:@"%@ HTTP/1.1\r\nHost: %@\r\nProxy-Connection: keep-alive\r\n\r\n", method, hostWithPort];
+    NSData *connectData = [connectPrefix dataUsingEncoding:NSUTF8StringEncoding];
+    [_delegate driver:self write:connectData];
+    _state = PSWebSocketDriverStateHTTPSProxyResponse;
+}
+
 - (void)writeHandshakeRequest {
     NSAssert(_mode == PSWebSocketModeClient, @"Cannot send handshake requests in non client mode");
+
+    if (_state == PSWebSocketDriverStateConnectHTTPSProxy) {
+        return [self writeHTTPSProxyRequest];
+    }
+
     NSAssert(_state == PSWebSocketDriverStateHandshakeRequest, @"Cannot start a driver more than once");
     
     // set handshake sec key
@@ -218,15 +238,15 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
     BOOL secure = ([URL.scheme isEqualToString:@"https"] || [URL.scheme isEqualToString:@"wss"]);
     NSString *host = (URL.port) ? [NSString stringWithFormat:@"%@:%@", URL.host, URL.port] : URL.host;
     NSString *origin = [NSString stringWithFormat:@"http%@://%@", (secure) ? @"s" : @"", host];
-    
+
     CFHTTPMessageRef msg = CFHTTPMessageCreateRequest(kCFAllocatorDefault, CFSTR("GET"), (__bridge CFURLRef)URL, kCFHTTPVersion1_1);
+    CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Origin"), (__bridge CFStringRef)origin);
     CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Host"), (__bridge CFStringRef)host);
     CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Connection"), CFSTR("upgrade"));
     CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Upgrade"), CFSTR("websocket"));
     CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Sec-WebSocket-Version"), CFSTR("13"));
     CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Sec-WebSocket-Key"), (__bridge CFStringRef)_handshakeSecKey);
-    CFHTTPMessageSetHeaderFieldValue(msg, CFSTR("Origin"), (__bridge CFStringRef)origin);
-    
+
     [_request.allHTTPHeaderFields enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
         CFHTTPMessageSetHeaderFieldValue(msg, (__bridge CFStringRef)[NSString stringWithFormat:@"%@", key], (__bridge CFStringRef)[NSString stringWithFormat:@"%@", obj]);
     }];
@@ -241,7 +261,7 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
     
     // serialize
     NSData *handshakeData = CFBridgingRelease(CFHTTPMessageCopySerializedMessage(msg));
-    
+
     // write handshake
     [_delegate driver:self write:handshakeData];
     
@@ -408,6 +428,60 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
 - (NSInteger)readBytes:(void *)bytes maxLength:(NSUInteger)maxLength error:(NSError *__autoreleasing *)outError {
     NSAssert(maxLength > 0, @"Must have 1 or more bytes");
     switch(_state) {
+        case PSWebSocketDriverStateHTTPSProxyResponse: {
+            NSAssert(maxLength > 0, @"Must have 1 or more bytes");
+
+            void* boundary = memmem(bytes, maxLength, "\r\n\r\n", 4);
+            if (boundary == NULL) {
+                // do not allow too much data for headers
+                if(maxLength >= 16384) {
+                    PSWebSocketSetOutError(outError, PSWebSocketErrorCodeHandshakeFailed, @"HTTP headers did not finish after reading 16384 bytes");
+                    return -1;
+                }
+                return 0;
+            }
+            NSUInteger preBoundaryLength = boundary + 4 - bytes;
+
+            // create handshake
+            CFHTTPMessageRef msg = CFHTTPMessageCreateEmpty(NULL, NO);
+            if (!CFHTTPMessageAppendBytes(msg, (const UInt8 *)bytes, preBoundaryLength)) {
+                PSWebSocketSetOutError(outError, PSWebSocketErrorCodeHandshakeFailed, @"Not a valid HTTP response");
+                CFRelease(msg);
+                return -1;
+            }
+
+            // validate complete
+            if(!CFHTTPMessageIsHeaderComplete(msg)) {
+                PSWebSocketSetOutError(outError, PSWebSocketErrorCodeHandshakeFailed, @"HTTP headers found CRLFCRLF but not complete");
+                CFRelease(msg);
+                return -1;
+            }
+
+            // get values
+            NSInteger statusCode = CFHTTPMessageGetResponseStatusCode(msg);
+            if(statusCode != 200) {
+                if(outError) {
+                    NSString* message = CFBridgingRelease(CFHTTPMessageCopyResponseStatusLine(msg));
+                    if (!message)
+                        message = [NSHTTPURLResponse localizedStringForStatusCode:statusCode];
+                    else if ([message hasPrefix:@"HTTP/1.1 "])
+                        message = [message substringFromIndex:9];
+                    NSString* desc = [@"HTTPS Proxy CONNECT failed: " stringByAppendingString:message];
+                    NSDictionary* userInfo = @{NSLocalizedDescriptionKey: desc,
+                                               NSLocalizedFailureReasonErrorKey: message,
+                                               PSHTTPStatusErrorKey: @(statusCode),
+                                               PSHTTPResponseErrorKey: (__bridge id)msg};
+                    *outError = [NSError errorWithDomain:PSWebSocketErrorDomain
+                                                    code:PSWebSocketErrorCodeHandshakeFailed
+                                                userInfo:userInfo];
+                }
+                return - 1;
+            }
+
+            _state = PSWebSocketDriverStateHandshakeRequest;
+            [self.delegate driverDidProxyConnect:self];
+            return maxLength;
+        }
         //
         // HANDSHAKE RESPONSE
         //
@@ -978,4 +1052,30 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
     return [data base64EncodedStringWithOptions:0];
 }
 
+- (NSDictionary *)httpsProxySettings {
+    NSDictionary *systemProxyConfig = CFBridgingRelease(CFNetworkCopySystemProxySettings());
+    if (![systemProxyConfig[(id)kCFNetworkProxiesHTTPSEnable] boolValue]) {
+        return nil;
+    }
+    NSString *proxyHost = systemProxyConfig[(id)kCFStreamPropertyHTTPSProxyHost];
+    if (![proxyHost isKindOfClass:[NSString class]]) {
+        return nil;
+    }
+
+    NSMutableDictionary *result = [NSMutableDictionary new];
+    result[(NSString *)kCFStreamPropertyHTTPSProxyHost] = proxyHost;
+
+    // Note: We allow nil port.
+    NSNumber *proxyPort = systemProxyConfig[(id)kCFStreamPropertyHTTPSProxyPort];
+    if ([proxyPort isKindOfClass:[NSNumber class]]) {
+        result[(NSString *)kCFStreamPropertyHTTPSProxyPort] = proxyPort;
+    }
+    return [result copy];
+}
+
+- (BOOL)shouldUseHTTPSProxy {
+    NSURL *URL = _request.URL;
+    BOOL secure = ([URL.scheme isEqualToString:@"https"] || [URL.scheme isEqualToString:@"wss"]);
+    return self.mode == PSWebSocketModeClient && secure && [self httpsProxySettings] != nil;
+}
 @end

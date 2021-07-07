@@ -163,11 +163,23 @@
 
         CFReadStreamRef readStream = nil;
         CFWriteStreamRef writeStream = nil;
-        CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
-                                           (__bridge CFStringRef)host,
-                                           port,
-                                           &readStream,
-                                           &writeStream);
+
+        if (self->_driver.shouldUseHTTPSProxy) {
+            NSDictionary *proxySettings = self->_driver.httpsProxySettings;
+            NSString *host = proxySettings[(NSString *)kCFStreamPropertyHTTPSProxyHost];
+            NSNumber *port = proxySettings[(NSString *)kCFStreamPropertyHTTPSProxyPort];
+            CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
+                                               (__bridge CFStringRef)host,
+                                               port.unsignedIntValue,
+                                               &readStream,
+                                               &writeStream);
+        } else {
+            CFStreamCreatePairWithSocketToHost(kCFAllocatorDefault,
+                                               (__bridge CFStringRef)host,
+                                               port,
+                                               &readStream,
+                                               &writeStream);
+        }
 
         #if TARGET_OS_OSX
         CFDictionaryRef systemProxyConfig = CFNetworkCopySystemProxySettings();
@@ -346,6 +358,10 @@
         ssl[(__bridge id)kCFStreamSSLLevel] = (__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL;
         ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation);
         ssl[(__bridge id)kCFStreamSSLIsServer] = @NO;
+        if (_driver.shouldUseHTTPSProxy) {
+            // needed to prevent SSL errors when using a HTTPS proxy.
+            ssl[(__bridge id)kCFStreamSSLPeerName] = self.request.URL.host;
+        }
 
         _negotiatedSSL = !customTrustEvaluation;
         [_inputStream setProperty:ssl forKey:(__bridge id)kCFStreamPropertySSLSettings];
@@ -549,6 +565,15 @@
 
 #pragma mark - PSWebSocketDriverDelegate
 
+/// Called when we detected the usage of a HTTPS proxy, and the initial CONNECT call
+/// has succeeded. We proceed by calling writeHandshakeRequest, which is the regular start method.
+- (void)driverDidProxyConnect:(PSWebSocketDriver *)driver {
+    [self pumpInput];
+    [self pumpOutput];
+    [self executeWork:^{
+        [self->_driver writeHandshakeRequest];
+    }];
+}
 - (void)driverDidOpen:(PSWebSocketDriver *)driver {
     if(_readyState != PSWebSocketReadyStateConnecting) {
         [NSException raise:@"Invalid State" format:@"Ready state must be connecting to become open"];
