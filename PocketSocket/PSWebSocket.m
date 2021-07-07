@@ -17,6 +17,7 @@
 #import "PSWebSocketDriver.h"
 #import "PSWebSocketBuffer.h"
 #import "NSStream+WeakDelegate.h"
+#import "PSProxySupport.h"
 #import <sys/socket.h>
 #import <arpa/inet.h>
 
@@ -168,18 +169,6 @@
                                            port,
                                            &readStream,
                                            &writeStream);
-
-        #if TARGET_OS_OSX
-        CFDictionaryRef systemProxyConfig = CFNetworkCopySystemProxySettings();
-        if(systemProxyConfig != nil) {
-            NSNumber *socksEnabled = CFDictionaryGetValue(systemProxyConfig, kCFNetworkProxiesSOCKSEnable);
-            if(socksEnabled != nil && [socksEnabled boolValue]) {
-                CFReadStreamSetProperty(readStream, kCFStreamPropertySOCKSProxy, systemProxyConfig);
-                CFWriteStreamSetProperty(writeStream, kCFStreamPropertySOCKSProxy, systemProxyConfig);
-            }
-            CFRelease(systemProxyConfig);
-        }
-        #endif
 
         NSAssert(readStream && writeStream, @"Failed to create streams for client socket");
 
@@ -337,6 +326,10 @@
 - (void)connect {
     if(_secure && _mode == PSWebSocketModeClient) {
 
+        BOOL usesProxy = NO;
+#if TARGET_OS_OSX
+        usesProxy = [PSProxySupport applySuitableProxyForURL:self.request.URL toStream:(CFReadStreamRef)self->_inputStream];
+#endif
         __block BOOL customTrustEvaluation = NO;
         [self executeDelegateAndWait:^{
             customTrustEvaluation = [self->_delegate respondsToSelector:@selector(webSocket:evaluateServerTrust:)];
@@ -344,7 +337,8 @@
 
         NSMutableDictionary *ssl = [NSMutableDictionary dictionary];
         ssl[(__bridge id)kCFStreamSSLLevel] = (__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL;
-        ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation);
+        // This `!usesProxy` condition is here to make it work for SOCKS. Most likely, there is a better solution for this.
+        ssl[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @(!customTrustEvaluation && !usesProxy);
         ssl[(__bridge id)kCFStreamSSLIsServer] = @NO;
 
         _negotiatedSSL = !customTrustEvaluation;

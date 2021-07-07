@@ -27,6 +27,9 @@
 		275D3AE11B02811E0013B9A9 /* PSWebSocketNetworkThread.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE5E34018B37DEC00BAE47A /* PSWebSocketNetworkThread.m */; };
 		275D3AE21B02811E0013B9A9 /* PSWebSocketServer.m in Sources */ = {isa = PBXBuildFile; fileRef = EE2A05DA18B5BBEC0066EEA4 /* PSWebSocketServer.m */; };
 		275D3AE41B02811E0013B9A9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E30D18B37DD500BAE47A /* Foundation.framework */; };
+		D8AF08FB25E4E5D800145384 /* PSProxySupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D8AF08F925E4E5D800145384 /* PSProxySupport.m */; };
+		D8AF096C25E4F7FA00145384 /* PSProxySupport.h in Headers */ = {isa = PBXBuildFile; fileRef = D8AF08F825E4E5D800145384 /* PSProxySupport.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		D8AF09DD25E5029400145384 /* PSProxySupport.m in Sources */ = {isa = PBXBuildFile; fileRef = D8AF08F925E4E5D800145384 /* PSProxySupport.m */; };
 		EE2A05DB18B5BBEC0066EEA4 /* PSWebSocketServer.m in Sources */ = {isa = PBXBuildFile; fileRef = EE2A05DA18B5BBEC0066EEA4 /* PSWebSocketServer.m */; };
 		EE337EC318B4AE1F003F95B9 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E38418B385DE00BAE47A /* libz.dylib */; };
 		EE337EC418B4AE23003F95B9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EEE5E30D18B37DD500BAE47A /* Foundation.framework */; };
@@ -88,6 +91,8 @@
 		002F720F237DA16B007A149D /* NSStream+WeakDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSStream+WeakDelegate.m"; sourceTree = "<group>"; };
 		275D3AE91B02811E0013B9A9 /* libPocketSocket.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPocketSocket.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		43B5206923436B5100808977 /* module.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = SOURCE_ROOT; };
+		D8AF08F825E4E5D800145384 /* PSProxySupport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.objj.h; path = PSProxySupport.h; sourceTree = "<group>"; };
+		D8AF08F925E4E5D800145384 /* PSProxySupport.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PSProxySupport.m; sourceTree = "<group>"; };
 		EE2A05D918B5BBEC0066EEA4 /* PSWebSocketServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PSWebSocketServer.h; sourceTree = "<group>"; };
 		EE2A05DA18B5BBEC0066EEA4 /* PSWebSocketServer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PSWebSocketServer.m; sourceTree = "<group>"; };
 		EE337EC518B4AE28003F95B9 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
@@ -244,6 +249,8 @@
 			children = (
 				EEE5E35118B37DF300BAE47A /* PSWebSocket.h */,
 				EEE5E35218B37DF300BAE47A /* PSWebSocket.m */,
+				D8AF08F825E4E5D800145384 /* PSProxySupport.h */,
+				D8AF08F925E4E5D800145384 /* PSProxySupport.m */,
 				EE2A05D918B5BBEC0066EEA4 /* PSWebSocketServer.h */,
 				EE2A05DA18B5BBEC0066EEA4 /* PSWebSocketServer.m */,
 				EEE5E33318B37DEC00BAE47A /* PSWebSocketDriver.h */,
@@ -312,6 +319,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8AF096C25E4F7FA00145384 /* PSProxySupport.h in Headers */,
 				0076F9361E93E10B00E35CD0 /* PSWebSocket.h in Headers */,
 				0076F9371E93E10E00E35CD0 /* PSWebSocketServer.h in Headers */,
 				0076F9381E93E11000E35CD0 /* PSWebSocketDriver.h in Headers */,
@@ -467,6 +475,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D8AF09DD25E5029400145384 /* PSProxySupport.m in Sources */,
 				275D3ADB1B02811E0013B9A9 /* PSWebSocketBuffer.m in Sources */,
 				275D3ADC1B02811E0013B9A9 /* PSWebSocket.m in Sources */,
 				275D3ADD1B02811E0013B9A9 /* PSWebSocketUTF8Decoder.m in Sources */,
@@ -497,6 +506,7 @@
 				EEE5E35318B37DF300BAE47A /* PSWebSocket.m in Sources */,
 				EEE5E34F18B37DEC00BAE47A /* PSWebSocketUTF8Decoder.m in Sources */,
 				EEE5E34B18B37DEC00BAE47A /* PSWebSocketDeflater.m in Sources */,
+				D8AF08FB25E4E5D800145384 /* PSProxySupport.m in Sources */,
 				EEE5E34318B37DEC00BAE47A /* PSWebSocketDriver.m in Sources */,
 				EEE5E34918B37DEC00BAE47A /* PSWebSocketInflater.m in Sources */,
 				EEE5E34D18B37DEC00BAE47A /* PSWebSocketNetworkThread.m in Sources */,
